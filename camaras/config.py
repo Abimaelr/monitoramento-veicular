@@ -49,17 +49,21 @@ class AutoseguroConfig:
     intervalo_min_s: float = 15.0
     cache_horas: float = 24.0
     timeout_captcha_s: float = 180.0
+    # Seletores do formulário "Por placa patente" (conferidos no site em 10/2026).
     seletores: dict[str, str] = field(default_factory=lambda: {
-        "aba_placa": "text=/placa patente/i",
-        "campo_placa": "input[name*='patente' i], input[id*='patente' i], input[placeholder*='patente' i]",
-        "botao_buscar": "button:has-text('Buscar'), button:has-text('Consultar'), input[type=submit]",
-        "resultado": "#resultado, .resultado, [class*='result' i]",
-        "captcha": "iframe[src*='recaptcha'], iframe[src*='hcaptcha'], .g-recaptcha, .h-captcha",
+        # Clicar no campo faz o site marcar a busca como "por placa" (tipo=1) e limpar VIN/motor.
+        "aba_placa": "#txt_placa_patente",
+        "campo_placa": "#txt_placa_patente",
+        # Botão oculto que envia o formulário; a imagem "Buscar" visível só dispara este clique.
+        "botao_buscar": "#btnPpuClick",
+        "resultado": "#exampleModalCenter .modal-body",
+        "captcha": ".g-recaptcha, iframe[src*='recaptcha']",
     })
+    # Só usadas quando a resposta estruturada da página não pôde ser lida (ver autoseguro.py).
     palavras_encargo: list[str] = field(default_factory=lambda: [
-        "encargo vigente", "presenta encargo", "con encargo", "robado"])
+        "encargo policial vigente", "encargo vigente", "encargo parcial", "sustraíd", "robado"])
     palavras_sem_encargo: list[str] = field(default_factory=lambda: [
-        "no presenta encargo", "sin encargo", "no registra encargo", "no se encontr"])
+        "no mantiene encargo", "no presenta encargo", "sin encargo", "no registra encargo"])
 
 
 @dataclass

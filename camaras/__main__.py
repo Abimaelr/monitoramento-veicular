@@ -11,6 +11,7 @@ import argparse
 import logging
 import re
 import sys
+import unicodedata
 from urllib.parse import urljoin, urlparse
 
 import yaml
@@ -31,13 +32,18 @@ def cmd_servir(args) -> None:
     uvicorn.run(app, host=args.host or cfg.host, port=args.porta or cfg.porta)
 
 
+def _slug(texto: str) -> str:
+    sem_acento = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "-", sem_acento.lower()).strip("-")
+
+
 def cmd_descobrir(args) -> None:
     """Varre a página do portal (e as páginas internas que pareçam de câmera) e imprime
     um bloco ``cameras:`` pronto para colar no config.yaml."""
     import httpx
     from bs4 import BeautifulSoup
 
-    from .sources import USER_AGENT, _parece_camera, descobrir_midia
+    from .sources import USER_AGENT, _parece_camera, descobrir_midia, rotulos_midia
 
     http = httpx.Client(timeout=20, follow_redirects=True, headers={"User-Agent": USER_AGENT})
     raiz = http.get(args.url)
@@ -56,15 +62,21 @@ def cmd_descobrir(args) -> None:
         if len(paginas) > args.max_paginas:
             break
 
-    cameras, vistos = [], set()
+    cameras, vistos, ids = [], set(), set()
     for url, html, titulo in paginas:
+        nomes = rotulos_midia(html, url)
         for midia in descobrir_midia(html, url):
             if midia in vistos or not _parece_camera(midia):
                 continue
             vistos.add(midia)
             tipo = "stream" if re.search(r"\.m3u8|mjpe?g|rtsp://", midia, re.I) else "snapshot"
             n = len(cameras) + 1
-            cameras.append({"id": f"cam{n:02d}", "nome": titulo or f"Câmera {n}", "url": midia, "tipo": tipo})
+            nome = nomes.get(midia) or titulo or f"Câmera {n}"
+            cid = _slug(nome) or f"cam{n:02d}"
+            if cid in ids:
+                cid = f"{cid}-{n}"
+            ids.add(cid)
+            cameras.append({"id": cid, "nome": nome, "url": midia, "tipo": tipo})
     if not cameras:
         print("Nenhuma mídia de câmera encontrada. Páginas visitadas:", file=sys.stderr)
         for url, *_ in paginas:

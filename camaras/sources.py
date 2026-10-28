@@ -125,6 +125,36 @@ def descobrir_midia(html: str, base: str) -> list[str]:
     return saida
 
 
+def rotulos_midia(html: str, base: str) -> dict[str, str]:
+    """Nome legível de cada mídia da página: a legenda do cartão que a contém (no portalimo.cl,
+    ``<div class="cam-card"><img ...><p class="cam-caption">Puente San Pablo</p></div>``)
+    ou, na falta dela, o ``alt``/``title`` da própria tag."""
+    from bs4 import BeautifulSoup
+
+    sopa = BeautifulSoup(html, "html.parser")
+    nomes: dict[str, str] = {}
+    for el in sopa.find_all(["img", "iframe", "video", "source", "embed"]):
+        src = el.get("src") or el.get("data-src")
+        if not src or src.startswith("data:"):
+            continue
+        nome, pai = "", el.parent
+        for _ in range(3):  # sobe até achar um bloco com texto curto (a legenda)
+            # Parar em blocos com outras mídias: a legenda deles não é desta câmera.
+            if pai is None or len(pai.find_all(["img", "iframe", "video", "embed"])) > 1:
+                break
+            # Uma legenda explícita vence o texto do bloco (que pode ter selos como "EN VIVO").
+            legenda = pai.find("figcaption") or pai.find(class_=re.compile(r"caption|legend|titul|title", re.I))
+            texto = (legenda or pai).get_text(" ", strip=True)
+            if texto:
+                if len(texto) <= 80:
+                    nome = texto
+                break
+            pai = pai.parent
+        nome = nome or el.get("alt") or el.get("title") or ""
+        nomes.setdefault(urljoin(base, src), " ".join(nome.split()))
+    return nomes
+
+
 def _parece_camera(url: str) -> bool:
     u = url.lower()
     if any(x in u for x in ("logo", "icon", "banner", "favicon", ".svg", ".gif")):

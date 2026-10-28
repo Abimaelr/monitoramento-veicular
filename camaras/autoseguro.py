@@ -4,14 +4,18 @@ O Autoseguro informa se um veículo tem encargo por roubo vigente. O site é
 pensado para consulta humana, então a integração é *assistida*:
 
 * Uma única thread controla um navegador Chromium **visível** (Playwright).
-* Para cada placa da fila ela abre o site, escolhe "Por placa patente" e
-  preenche a placa.
-* Se houver captcha, a consulta fica em ``aguardando_captcha`` até o operador
-  resolvê-lo nessa janela. A plataforma não tenta burlar o captcha.
+* Para cada placa da fila ela abre o site e preenche "Por placa patente".
+* O site exige reCAPTCHA: a consulta fica em ``aguardando_captcha`` até o
+  operador resolvê-lo nessa janela. Só depois disso a plataforma envia o
+  formulário. Ela não tenta burlar o captcha.
+* O site devolve o resultado como JSON embutido na página
+  (``var IsResponse = true; var response = {...}``). Lemos esse objeto e o
+  classificamos com a mesma regra do JavaScript do site (``Inicio.js``); o
+  texto da janela de resultado só é usado se o objeto não puder ser lido.
 * Há intervalo mínimo entre consultas e cache por placa, para não
   sobrecarregar o serviço.
 
-Os seletores e as palavras que classificam o resultado ficam no
+Os seletores e as palavras da classificação por texto ficam no
 ``config.yaml`` (seção ``autoseguro``), para ajustar sem mexer no código caso o
 site mude.
 """
@@ -43,6 +47,61 @@ def classificar(texto: str, cfg: AutoseguroConfig) -> str:
     if any(p in t for p in cfg.palavras_encargo):
         return "encargo"
     return "indeterminado"
+
+
+def _avaliar_especies(especies: list[dict]) -> tuple[str, list[str]]:
+    """Porta de ``evaluarConsultaVehiculoDesdeEspecies`` do Inicio.js.
+
+    Cada "especie" é uma peça do veículo com encargo (1 placa dianteira, 2 placa
+    traseira, 3 VIN/veículo, 4 motor); ``FechaSolucionEspecie`` preenchida
+    significa que a peça foi recuperada. Devolve o resultado como o site o
+    mostra e as peças ainda pendentes.
+    """
+    nomes = {1: "placa dianteira", 2: "placa traseira", 3: "veículo (VIN)", 4: "motor"}
+    achada = {t: False for t in nomes}
+    vin_vigente = False
+    for e in especies:
+        tipo = e.get("TipoEspecie")
+        recuperada = e.get("FechaSolucionEspecie") is not None
+        if tipo in achada:
+            achada[tipo] = achada[tipo] or recuperada
+        if tipo == 3 and not recuperada:
+            vin_vigente = True
+    if vin_vigente or not achada[3]:
+        return "Encargo policial vigente", [nomes[3]]
+    faltam = [nomes[t] for t in (1, 2, 4) if not achada[t]]
+    return ("Encargo parcial", faltam) if faltam else ("Sin encargo", [])
+
+
+def classificar_resposta(resp: dict) -> tuple[str, str]:
+    """Classifica o objeto ``response`` que o Autoseguro embute na página de resultado.
+
+    Segue o Inicio.js: ``Cod`` 0 é sucesso, 20 é limite diário atingido e 1 é
+    erro com mensagem em ``Desc``. Com sucesso, só há encargo quando
+    ``CodTipoEncargo == 1`` e existem peças (``Especies``) com ``EUN != 0``.
+    """
+    cod = resp.get("Cod")
+    if cod == 20:
+        return "erro", "Autoseguro: limite diário de consultas atingido"
+    if cod != 0:
+        return "erro", f"Autoseguro: {resp.get('Desc') or f'código {cod}'}"
+    r = resp.get("Result") or {}
+    especies = r.get("Especies") or []
+    if r.get("CodTipoEncargo") != 1 or not especies or r.get("EUN") == 0:
+        return "sem_encargo", "Sin encargo"
+    resultado, faltam = _avaliar_especies(especies)
+    pecas = "; ".join(
+        f"{e.get('Descripcion', '?')}: {'recuperada' if e.get('FechaSolucionEspecie') else 'pendente'}"
+        for e in especies)
+    if resultado == "Sin encargo":
+        return "sem_encargo", f"Sin encargo (todas as peças recuperadas). {pecas}"
+    if resultado == "Encargo parcial":
+        return "encargo", f"Encargo parcial, pendente: {', '.join(faltam)}. {pecas}"
+    return "encargo", f"Encargo policial vigente. {pecas}"
+
+
+# Lê o resultado embutido; null enquanto a página ainda é o formulário vazio.
+_JS_RESPOSTA = "() => (typeof IsResponse !== 'undefined' && IsResponse && typeof response === 'object') ? response : null"
 
 
 def link_manual(placa: str, cfg: AutoseguroConfig) -> str:
@@ -139,33 +198,47 @@ class ConsultorAutoseguro:
         campo.wait_for(state="visible", timeout=20_000)
         campo.fill(placa)
 
-        resultado = pagina.locator(s["resultado"]).first
-        texto_antes = resultado.inner_text() if resultado.count() else ""
-
-        clicou = False
+        enviou = False
         if pagina.locator(s["captcha"]).count():
             self.banco.salvar_consulta(placa, "aguardando_captcha",
-                                       "Resolva o captcha e clique em buscar na janela do navegador.")
+                                       "Resolva o captcha na janela do navegador; a busca é enviada em seguida.")
             log.info("[%s] aguardando o operador resolver o captcha", placa)
         else:
             pagina.locator(s["botao_buscar"]).first.click()
-            clicou = True
+            enviou = True
 
+        resultado = pagina.locator(s["resultado"]).first
+        resposta, texto = None, ""
         limite = time.time() + self.cfg.timeout_captcha_s
         while time.time() < limite:
-            if resultado.count():
-                texto = resultado.inner_text().strip()
-                if texto and texto != texto_antes:
+            try:
+                resposta = pagina.evaluate(_JS_RESPOSTA)
+                if resposta is not None:
                     break
-            # Captcha resolvido mas o operador não clicou em buscar: clicamos por ele.
-            token = pagina.locator("textarea[name='g-recaptcha-response'], textarea[name='h-captcha-response']")
-            if not clicou and token.count() and token.first.input_value():
-                pagina.locator(s["botao_buscar"]).first.click()
-                clicou = True
+                # Se o site mudar o nome das variáveis, ainda dá para ler a janela de resultado.
+                if enviou and resultado.count() and resultado.is_visible():
+                    texto = resultado.inner_text().strip()
+                    if texto:
+                        break
+                # Captcha resolvido pelo operador: enviamos o formulário por ele.
+                token = pagina.locator("textarea[name='g-recaptcha-response'], textarea[name='h-captcha-response']")
+                if not enviou and token.count() and token.first.input_value():
+                    if campo.input_value() != placa:  # o operador pode ter apagado o campo
+                        campo.fill(placa)
+                    pagina.locator(s["botao_buscar"]).first.click()
+                    enviou = True
+            except Exception as e:  # noqa: BLE001 - a página está navegando entre as leituras
+                log.debug("[%s] página em transição: %s", placa, e)
             pagina.wait_for_timeout(1000)
         else:
-            return "erro", "tempo esgotado esperando o resultado"
+            return "erro", "tempo esgotado esperando o captcha/resultado"
 
-        texto = resultado.inner_text().strip()
+        if isinstance(resposta, dict):
+            try:  # deixa a janela de resultado abrir para a captura de tela
+                resultado.wait_for(state="visible", timeout=5_000)
+            except Exception:  # noqa: BLE001 - a captura é só evidência; o JSON já basta
+                pass
         pagina.screenshot(path=str(self.pasta / f"{placa}.png"), full_page=True)
+        if isinstance(resposta, dict):
+            return classificar_resposta(resposta)
         return classificar(texto, self.cfg), texto[:2000]
