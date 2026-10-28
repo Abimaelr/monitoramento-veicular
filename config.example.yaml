@@ -20,20 +20,141 @@ autoseguro:
   intervalo_min_s: 15
   cache_horas: 24
   timeout_captcha_s: 180
-  # Ajuste os seletores se o site mudar (sintaxe de seletores do Playwright):
+  # Os seletores padrão já apontam para o formulário "Por placa patente" do site
+  # (#txt_placa_patente, #btnPpuClick, reCAPTCHA). Só sobrescreva se o site mudar:
   # seletores:
-  #   campo_placa: "#patente"
-  #   botao_buscar: "#btnBuscar"
-  #   resultado: "#resultado"
+  #   campo_placa: "#txt_placa_patente"
+  #   botao_buscar: "#btnPpuClick"
 
-# Gere a lista com:  python -m camaras descobrir http://www.portalimo.cl/
+# Lista real do portalimo.cl (Municipalidad de Osorno), gerada em 10/2026 com:
+#   python -m camaras descobrir http://www.portalimo.cl/
+# Todas são snapshots JPEG servidos por HTTP sem TLS. A "Plaza de Armas" fica em
+# 190.121.3.148 e as demais em 216.155.78.8 (uma porta por câmera).
 # tipo: snapshot (URL devolve um JPEG) | stream (MJPEG/HLS/RTSP) | pagina (página HTML que contém a câmera)
 cameras:
-  - id: exemplo
-    nome: Câmera de exemplo
+  - id: plaza-de-armas
+    nome: Plaza de Armas
     local: Osorno
     tipo: snapshot
-    url: http://www.portalimo.cl/camaras/exemplo.jpg
+    url: http://190.121.3.148/memfs/a242862d-dfd0-4f5a-8782-13709e362040.jpg
     intervalo: 2
     alpr: true
-    ativa: false
+  - id: plaza-de-armas-pileta
+    nome: Plaza de Armas - Pileta
+    local: Osorno
+    tipo: snapshot
+    url: http://216.155.78.8:19021/images/live.jpg
+    intervalo: 2
+    alpr: true
+  - id: plaza-de-armas-toro
+    nome: Plaza de Armas - Toro
+    local: Osorno
+    tipo: snapshot
+    url: http://216.155.78.8:19029/images/live.jpg
+    intervalo: 2
+    alpr: true
+  - id: parque-chuyaca
+    nome: Parque Chuyaca
+    local: Osorno
+    tipo: snapshot
+    url: http://216.155.78.8:19022/images/live.jpg
+    intervalo: 2
+    alpr: true
+  - id: feria-rahue
+    nome: Feria Rahue
+    local: Osorno
+    tipo: snapshot
+    url: http://216.155.78.8:19025/images/live.jpg
+    intervalo: 2
+    alpr: true
+  - id: estadio-alberto-allaire
+    nome: Estadio Alberto Allaire
+    local: Osorno
+    tipo: snapshot
+    url: http://216.155.78.8:19026/images/live.jpg
+    intervalo: 2
+    alpr: true
+  - id: villa-olimpica
+    nome: Villa Olímpica
+    local: Osorno
+    tipo: snapshot
+    url: http://216.155.78.8:19023/images/live.jpg
+    intervalo: 2
+    alpr: true
+  - id: parque-cuarto-centenario
+    nome: Parque Cuarto Centenario
+    local: Osorno
+    tipo: snapshot
+    url: http://216.155.78.8:19024/images/live.jpg
+    intervalo: 2
+    alpr: true
+  - id: puente-san-pablo
+    nome: Puente San Pablo
+    local: Osorno
+    tipo: snapshot
+    url: http://216.155.78.8:19033/images/live.jpg
+    intervalo: 2
+    alpr: true
+  - id: complejo-deportivo-alday
+    nome: Complejo Deportivo Alday
+    local: Osorno
+    tipo: snapshot
+    url: http://216.155.78.8:19027/images/live.jpg
+    intervalo: 2
+    alpr: true
+  - id: estadio-parque-schott
+    nome: Estadio Parque Schott
+    local: Osorno
+    tipo: snapshot
+    url: http://216.155.78.8:19035/images/live.jpg
+    intervalo: 2
+    alpr: true
+  - id: mercado-municipal
+    nome: Mercado Municipal
+    local: Osorno
+    tipo: snapshot
+    url: http://216.155.78.8:19031/images/live.jpg
+    intervalo: 2
+    alpr: true
+  - id: complejo-rahue-alto
+    nome: Complejo Rahue Alto
+    local: Osorno
+    tipo: snapshot
+    url: http://216.155.78.8:19028/images/live.jpg
+    intervalo: 2
+    alpr: true
+  - id: puente-chaurakawin
+    nome: Puente Chaurakawin
+    local: Osorno
+    tipo: snapshot
+    url: http://216.155.78.8:19034/images/live.jpg
+    intervalo: 2
+    alpr: true
+  - id: puente-san-pedro
+    nome: Puente San Pedro
+    local: Osorno
+    tipo: snapshot
+    url: http://216.155.78.8:19032/images/live.jpg
+    intervalo: 2
+    alpr: true
+  - id: parque-olegario-mohr
+    nome: Parque Olegario Mohr
+    local: Osorno
+    tipo: snapshot
+    url: http://216.155.78.8:19030/images/live.jpg
+    intervalo: 2
+    alpr: true
+  - id: universidad-de-los-lagos
+    nome: Universidad de los Lagos
+    local: Osorno
+    tipo: snapshot
+    url: http://216.155.78.8:19036/images/live.jpg
+    intervalo: 2
+    alpr: true
+  - id: mirasur-el-morro
+    nome: Mirasur - El Morro
+    local: Osorno
+    tipo: snapshot
+    url: http://216.155.78.8:19037/images/live.jpg
+    intervalo: 2
+    alpr: true

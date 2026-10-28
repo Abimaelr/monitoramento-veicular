@@ -28,11 +28,14 @@ FastAPI: painel web, API REST, alertas de encargo vigente
   descartadas; o OCR é corrigido posição a posição.
 * **Duplicatas**: a mesma placa na mesma câmera dentro de 2 min conta uma vez.
 * **Autoseguro** (`camaras/autoseguro.py`): o site é feito para consulta humana, então a
-  integração é *assistida*. Um Chromium visível abre o site, escolhe "Por placa patente" e
-  preenche a placa. Se houver captcha, a consulta fica em "resolva o captcha" até o operador
-  resolvê-lo na janela; **a plataforma não burla captcha**. Há intervalo mínimo entre consultas
-  (15 s) e cache de 24 h por placa. O resultado é classificado em `encargo` / `sem_encargo` /
-  `indeterminado` e um print da tela fica salvo como evidência. Placas com encargo aparecem
+  integração é *assistida*. Um Chromium visível abre o site e preenche "Por placa patente".
+  O site exige reCAPTCHA, então a consulta fica em "resolva o captcha" até o operador
+  resolvê-lo na janela; só então a plataforma envia a busca. **A plataforma não burla captcha.**
+  Há intervalo mínimo entre consultas (15 s) e cache de 24 h por placa. O site devolve o
+  resultado como JSON na própria página; a plataforma lê esse JSON e o classifica com a mesma
+  regra do JavaScript do site (encargo vigente, encargo parcial ou sem encargo), resultando em
+  `encargo` / `sem_encargo` / `erro` (inclusive o limite diário de consultas do site). Um print
+  da tela fica salvo como evidência. Placas com encargo aparecem
   num alerta no topo do painel, com a câmera e o horário em que foram vistas.
 
 ## Instalação
@@ -47,7 +50,7 @@ cp config.example.yaml config.yaml
 ## Uso
 
 ```bash
-# 1. Descobrir as câmeras do portal e colar o resultado em config.yaml
+# 1. (Opcional) O config.example.yaml já traz as 18 câmeras do portal. Para atualizar a lista:
 python -m camaras descobrir http://www.portalimo.cl/
 
 # 2. Subir o painel (http://localhost:8000)
@@ -89,9 +92,10 @@ pytest -m "not modelo" # só os testes rápidos, sem baixar modelos
 
 ## Pendências
 
-* Os seletores do formulário do Autoseguro e a URL das câmeras do PortalImo ainda precisam ser
-  confirmados contra os sites reais (o ambiente de desenvolvimento não tinha acesso a eles).
-  Tudo é ajustável em `config.yaml`, sem mexer no código.
+* Seletores do Autoseguro e lista de câmeras conferidos nos sites reais em 10/2026. Ainda não
+  foi feita uma consulta completa (o reCAPTCHA precisa de uma pessoa) nem a leitura de placas
+  em quadros reais das câmeras (os servidores das câmeras, `216.155.78.8` e `190.121.3.148`,
+  não estavam acessíveis no ambiente de desenvolvimento).
 * As câmeras de um portal municipal costumam ter resolução e ângulo pensados para paisagem, não
   para leitura de placa. Vale testar com imagens reais e, se as placas ficarem muito pequenas,
   usar `detector_model: yolo-v9-t-640-license-plate-end2end`.
