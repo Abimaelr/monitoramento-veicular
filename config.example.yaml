@@ -1,0 +1,39 @@
+# Copie para config.yaml e ajuste.
+host: 0.0.0.0
+porta: 8000
+banco: data/camaras.db
+capturas: data/capturas
+
+alpr:
+  ativo: true
+  detector_model: yolo-v9-t-384-license-plate-end2end   # ou yolo-v9-t-640-license-plate-end2end (mais lento, enxerga placas menores)
+  ocr_model: cct-s-v2-global-model
+  confianca_deteccao: 0.4
+  confianca_ocr: 0.6
+  janela_duplicata_s: 120
+
+autoseguro:
+  ativo: true
+  modo: assistido        # assistido (navegador visível, operador resolve captcha) | manual (só link)
+  automatico: false      # true = consulta toda placa nova detectada
+  headless: false
+  intervalo_min_s: 15
+  cache_horas: 24
+  timeout_captcha_s: 180
+  # Ajuste os seletores se o site mudar (sintaxe de seletores do Playwright):
+  # seletores:
+  #   campo_placa: "#patente"
+  #   botao_buscar: "#btnBuscar"
+  #   resultado: "#resultado"
+
+# Gere a lista com:  python -m camaras descobrir http://www.portalimo.cl/
+# tipo: snapshot (URL devolve um JPEG) | stream (MJPEG/HLS/RTSP) | pagina (página HTML que contém a câmera)
+cameras:
+  - id: exemplo
+    nome: Câmera de exemplo
+    local: Osorno
+    tipo: snapshot
+    url: http://www.portalimo.cl/camaras/exemplo.jpg
+    intervalo: 2
+    alpr: true
+    ativa: false
