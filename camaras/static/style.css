@@ -1,0 +1,47 @@
+:root {
+  --fundo: #0f1419;
+  --painel: #182029;
+  --borda: #2a3541;
+  --texto: #e6edf3;
+  --suave: #8b98a5;
+  --destaque: #ffb020;
+  --ok: #2ea043;
+  --perigo: #f85149;
+  --info: #388bfd;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--fundo); color: var(--texto); }
+header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--borda); }
+h1 { font-size: 18px; margin: 0; }
+h2 { font-size: 15px; margin: 0 0 10px; }
+.muted { color: var(--suave); font-weight: normal; }
+input, button { font: inherit; color: inherit; background: var(--painel); border: 1px solid var(--borda); border-radius: 6px; padding: 6px 10px; }
+button { cursor: pointer; }
+button:hover { border-color: var(--destaque); }
+main { display: grid; grid-template-columns: 1fr 360px; gap: 16px; padding: 16px; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+.grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.camera { background: var(--painel); border: 1px solid var(--borda); border-radius: 8px; overflow: hidden; }
+.camera img { display: block; width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #000; }
+.camera .rodape { display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; }
+.status { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; background: var(--perigo); }
+.status.on { background: var(--ok); }
+aside { display: flex; flex-direction: column; gap: 8px; }
+#deteccoes { list-style: none; margin: 0 0 16px; padding: 0; max-height: 60vh; overflow-y: auto; }
+#deteccoes li { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: center; padding: 8px; border-bottom: 1px solid var(--borda); cursor: pointer; }
+#deteccoes li:hover { background: var(--painel); }
+#deteccoes img { width: 96px; height: 40px; object-fit: contain; background: #000; border-radius: 4px; }
+.placa { font: 700 16px ui-monospace, "SFMono-Regular", Menlo, monospace; letter-spacing: 1px; background: #fff; color: #111; padding: 1px 6px; border-radius: 3px; border: 2px solid #111; }
+.chip { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--borda); color: var(--suave); }
+.chip.encargo { background: var(--perigo); border-color: var(--perigo); color: #fff; }
+.chip.sem_encargo { border-color: var(--ok); color: var(--ok); }
+.chip.aguardando_captcha, .chip.pendente, .chip.em_andamento { border-color: var(--destaque); color: var(--destaque); }
+#alertas { margin: 12px 16px 0; padding: 10px 14px; border-radius: 8px; background: rgba(248, 81, 73, .15); border: 1px solid var(--perigo); }
+dialog { max-width: min(900px, 95vw); width: 100%; background: var(--painel); color: var(--texto); border: 1px solid var(--borda); border-radius: 10px; }
+dialog::backdrop { background: rgba(0, 0, 0, .6); }
+dialog img { max-width: 100%; border-radius: 6px; }
+.fechar { float: right; font-size: 18px; line-height: 1; }
+table { width: 100%; border-collapse: collapse; }
+td, th { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--borda); }
+pre { white-space: pre-wrap; background: var(--fundo); padding: 8px; border-radius: 6px; }

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monitoramento veicular</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Monitoramento veicular</h1>
+    <form id="busca" autocomplete="off">
+      <input id="busca-placa" placeholder="Buscar placa (ex.: BBCL42)" maxlength="10">
+      <button>Buscar</button>
+    </form>
+  </header>
+
+  <div id="alertas" hidden></div>
+
+  <main>
+    <section>
+      <h2>Câmeras <span id="resumo-cameras" class="muted"></span></h2>
+      <div id="cameras" class="grade"></div>
+      <p id="sem-cameras" class="muted" hidden>
+        Nenhuma câmera configurada. Rode <code>python -m camaras descobrir http://www.portalimo.cl/</code>
+        e cole o resultado no <code>config.yaml</code>.
+      </p>
+    </section>
+
+    <aside>
+      <h2>Placas detectadas</h2>
+      <ul id="deteccoes"></ul>
+
+      <h2>Testar com uma foto</h2>
+      <form id="analisar">
+        <input type="file" id="foto" accept="image/*">
+        <button>Ler placas</button>
+      </form>
+      <div id="resultado-analise"></div>
+    </aside>
+  </main>
+
+  <dialog id="detalhe">
+    <form method="dialog"><button class="fechar" aria-label="Fechar">×</button></form>
+    <div id="detalhe-conteudo"></div>
+  </dialog>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
