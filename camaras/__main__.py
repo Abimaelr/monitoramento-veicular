@@ -3,6 +3,7 @@
     python -m camaras servir   [-c config.yaml]
     python -m camaras descobrir http://www.portalimo.cl/   # sugere entradas de câmera
     python -m camaras analisar foto.jpg [--saida anotada.jpg]
+    python -m camaras diagnosticar [--quadros 5] [--pasta diagnostico]  # testa o ALPR em cada câmera
 """
 
 from __future__ import annotations
@@ -105,6 +106,54 @@ def cmd_analisar(args) -> None:
         cv2.imwrite(args.saida, anotar(quadro, leituras))
 
 
+def cmd_diagnosticar(args) -> None:
+    """Captura alguns quadros de cada câmera do config, roda o ALPR e resume por câmera
+    (acessível ou não, resolução, placas detectadas e lidas). Os quadros e recortes ficam em
+    ``--pasta`` para conferir a leitura a olho."""
+    import time
+    from pathlib import Path
+
+    import cv2
+
+    from .alpr import LeitorPlacas, anotar
+    from .sources import criar_fonte
+
+    cfg = carregar(args.config)
+    leitor = LeitorPlacas(cfg.alpr)
+    pasta = Path(args.pasta)
+    pasta.mkdir(parents=True, exist_ok=True)
+    cameras = [c for c in cfg.cameras if not args.camera or c.id in args.camera]
+    linhas = []
+    for cam in cameras:
+        fonte = criar_fonte(cam)
+        capturados, placas, resolucao = 0, [], "-"
+        try:
+            for i in range(args.quadros):
+                quadro = fonte.ler()
+                if quadro is None:
+                    if capturados == 0:
+                        break  # câmera fora do ar: não insiste
+                    continue
+                capturados += 1
+                resolucao = f"{quadro.shape[1]}x{quadro.shape[0]}"
+                leituras = leitor.ler(quadro)
+                placas += [lt.placa.texto for lt in leituras]
+                cv2.imwrite(str(pasta / f"{cam.id}_{i:02d}.jpg"), anotar(quadro, leituras) if leituras else quadro)
+                for j, lt in enumerate(leituras):
+                    cv2.imwrite(str(pasta / f"{cam.id}_{i:02d}_{lt.placa.texto}_{j}.png"), lt.recortar(quadro))
+                if i + 1 < args.quadros:
+                    time.sleep(cam.intervalo)
+        finally:
+            fonte.fechar()
+        status = "ok" if capturados else "sem resposta"
+        linhas.append((cam.id, status, resolucao, capturados, len(placas), ", ".join(sorted(set(placas))) or "-"))
+
+    print(f"{'câmera':28} {'status':13} {'resolução':10} quadros placas  lidas")
+    for cid, status, res, q, n, lidas in linhas:
+        print(f"{cid:28} {status:13} {res:10} {q:7} {n:6}  {lidas}")
+    print(f"\nquadros e recortes em {pasta}/")
+
+
 def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)  # um log por snapshot polui demais
@@ -126,6 +175,12 @@ def main(argv: list[str] | None = None) -> None:
     a.add_argument("imagem")
     a.add_argument("--saida")
     a.set_defaults(func=cmd_analisar)
+
+    g = sub.add_parser("diagnosticar", help="testa a captura e o ALPR em cada câmera do config")
+    g.add_argument("--quadros", type=int, default=5, help="quadros por câmera")
+    g.add_argument("--pasta", default="diagnostico", help="onde salvar quadros e recortes")
+    g.add_argument("--camera", action="append", help="só esta câmera (pode repetir)")
+    g.set_defaults(func=cmd_diagnosticar)
 
     args = p.parse_args(argv)
     args.func(args)

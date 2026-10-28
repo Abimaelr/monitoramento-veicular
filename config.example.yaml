@@ -38,7 +38,9 @@ cameras:
     tipo: snapshot
     url: http://190.121.3.148/memfs/a242862d-dfd0-4f5a-8782-13709e362040.jpg
     intervalo: 2
-    alpr: true
+    # Vista panorâmica: os carros aparecem com placas de poucos pixels. Em 40 quadros de
+    # 28/10/2026 o ALPR não leu nenhuma placa, nem com o detector 640 e mosaico ampliado.
+    alpr: false
   - id: plaza-de-armas-pileta
     nome: Plaza de Armas - Pileta
     local: Osorno

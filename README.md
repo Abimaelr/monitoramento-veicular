@@ -58,7 +58,15 @@ python -m camaras servir
 
 # Testar o reconhecimento numa foto
 python -m camaras analisar foto.jpg --saida anotada.jpg
+
+# Testar captura + leitura em todas as câmeras do config (salva quadros em diagnostico/)
+python -m camaras diagnosticar --quadros 5
 ```
+
+O ALPR precisa de placas com pelo menos ~60–80 px de largura no quadro. Câmeras panorâmicas
+(como a Plaza de Armas, 1920x1080 cobrindo a praça inteira) mostram os carros com placas de
+poucos pixels e não produzem leituras; nelas vale deixar `alpr: false` e usar o painel só
+para ver a imagem.
 
 Tipos de câmera no `config.yaml`:
 
